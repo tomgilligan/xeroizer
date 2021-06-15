@@ -115,8 +115,13 @@ module Xeroizer
         logger.info("Nonce used: " + exception.to_s) if self.logger
         sleep_for(1)
         retry
-      rescue Xeroizer::OAuth::RateLimitExceeded
-        if self.rate_limit_sleep
+      rescue Xeroizer::OAuth::RateLimitExceeded => e
+        if e.retry_after.present?
+          raise if attempts > rate_limit_max_attempts
+          logger.info("Rate limit exceeded, retrying") if self.logger
+          sleep_for(e.retry_after)
+          retry
+        elsif self.rate_limit_sleep
           raise if attempts > rate_limit_max_attempts
           logger.info("Rate limit exceeded, retrying") if self.logger
           sleep_for(self.rate_limit_sleep)
